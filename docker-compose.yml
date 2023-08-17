@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+
+    server:
+        container_name: unit-test-nginx
+        image: 'nginx:alpine'
+        ports:
+            - '8080:80'
+        volumes:
+            - .:/var/www
+            - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+        depends_on:
+            - app
+            # - mysql
+        networks:
+            -  unit-test-network
+
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: app
+        volumes:
+            - .:/var/www
+            - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+        networks:
+            -  unit-test-network
+
+    db:
+        image: mysql:8.0.32
+        container_name: unit-test-db
+        restart: unless-stopped
+        ports:
+            - "3306:3306"
+        volumes:
+            - ./docker/mysql/my.cnf:/etc/mysql/my.cnf
+        environment:
+            - MYSQL_ROOT_PASSWORD=123456
+            - MYSQL_DATABASE=unit-test
+            - MYSQL_USER=admin
+            - MYSQL_PASSWORD=123456
+        networks:
+            -  unit-test-network
+
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: unit-test-pma
+        links:
+            - db
+        environment:
+            PMA_HOST: db
+            PMA_PORT: 3306
+            PMA_ARBITRARY: 1
+        restart: always
+        ports:
+            - 8081:80
+        networks:
+            - unit-test-network
+
+networks:
+    unit-test-network:
+        driver: bridge
